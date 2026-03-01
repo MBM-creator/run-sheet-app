@@ -1,8 +1,23 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { OPS_FLAG_LABELS } from "@/lib/ui/ops-flags-labels";
+import { formatDateTimeLocal } from "@/lib/datetime/format";
+
+function EscalationAge({ created_at }: { created_at: string }) {
+  const [age, setAge] = useState<string | null>(null);
+  useEffect(() => {
+    const ms = Date.now() - new Date(created_at).getTime();
+    const h = Math.floor(ms / 3600000);
+    const d = Math.floor(h / 24);
+    if (d > 0) setAge(`${d}d ago`);
+    else if (h > 0) setAge(`${h}h ago`);
+    else setAge("Just now");
+  }, [created_at]);
+  return age ? ` · ${age}` : null;
+}
 
 export type CutoffStatus = "confirmed" | "overdue" | "due";
 
@@ -79,28 +94,13 @@ export function WeekActionsPanel({
             : 0;
           const escalationLabel =
             topLevel >= 3 ? OPS_FLAG_LABELS.level3Label : topLevel >= 2 ? OPS_FLAG_LABELS.level2Label : topLevel >= 1 ? OPS_FLAG_LABELS.level1Label : null;
-          const age =
-            dayEscalations.length > 0
-              ? (() => {
-                  const created = dayEscalations[0].created_at;
-                  const ms = Date.now() - new Date(created).getTime();
-                  const h = Math.floor(ms / 3600000);
-                  const d = Math.floor(h / 24);
-                  if (d > 0) return `${d}d ago`;
-                  if (h > 0) return `${h}h ago`;
-                  return "Just now";
-                })()
-              : null;
           return (
             <li
               key={c.id}
               className="flex flex-wrap items-center gap-2 text-sm text-zinc-700"
             >
               <span className="font-medium">
-                {new Date(c.cutoff_datetime).toLocaleString(undefined, {
-                  dateStyle: "short",
-                  timeStyle: "short",
-                })}
+                {formatDateTimeLocal(c.cutoff_datetime)}
               </span>
               <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs">
                 {c.cutoff_category ?? "—"}
@@ -114,7 +114,9 @@ export function WeekActionsPanel({
                 <>
                   <Badge variant={topLevel >= 3 ? "danger" : "warning"}>
                     {escalationLabel}
-                    {age ? ` · ${age}` : ""}
+                    {dayEscalations.length > 0 ? (
+                      <EscalationAge created_at={dayEscalations[0].created_at} />
+                    ) : null}
                   </Badge>
                 </>
               )}

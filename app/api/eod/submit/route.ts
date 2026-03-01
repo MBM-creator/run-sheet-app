@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
     reason?: "weather" | "variation" | "other";
     explanation?: string;
     recovery_plan?: string;
+    actual_notes?: string;
   };
   try {
     body = await request.json();
@@ -79,6 +80,7 @@ export async function POST(request: NextRequest) {
       reason: body.reason ?? null,
       explanation: body.explanation?.trim() ?? null,
       recovery_plan: body.recovery_plan?.trim() ?? null,
+      actual_notes: body.actual_notes?.trim() ?? null,
       submitted_by_label: payload.label ?? "User",
     })
     .select()

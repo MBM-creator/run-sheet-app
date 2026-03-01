@@ -11,6 +11,8 @@ import { CutoffConfirmModal } from "@/components/run-sheet/CutoffConfirmModal";
 import { EscalationBanner } from "@/components/run-sheet/EscalationBanner";
 import { MidweekReviewModal } from "@/components/run-sheet/MidweekReviewModal";
 import { EscalationInboxModal } from "@/components/run-sheet/EscalationInboxModal";
+import { RunSheetScoreboard } from "@/components/run-sheet/RunSheetScoreboard";
+import { ImportRunSheetCsvModal } from "@/components/run-sheet/ImportRunSheetCsvModal";
 import { useRunSheetAuth } from "@/contexts/RunSheetContext";
 import type { RunSheetStatus } from "@/lib/types";
 
@@ -26,6 +28,7 @@ interface DayRow {
   cutoff_confirmed_at?: string | null;
   cutoff_confirmed_by_label?: string | null;
   cutoff_confirm_note?: string | null;
+  planned_labour_hours?: number | null;
 }
 
 interface CutoffRow {
@@ -62,11 +65,14 @@ interface RunSheetViewProps {
   projectId: string;
   projectName: string;
   siteAddress: string | null;
+  projectStartDate: string | null;
   runSheet: {
     id: string;
     version: number;
     status: RunSheetStatus;
     supervisor_confirmed_at: string | null;
+    hours_agreed?: number | null;
+    hours_used?: number | null;
   } | null;
   days: DayRow[];
   pendingByDay: Record<string, number>;
@@ -77,12 +83,16 @@ interface RunSheetViewProps {
   escalationsByDayId: Record<string, EscalationForView[]>;
   weekStartDate: string;
   hasWeeklyLogisticsReview: boolean;
+  resolvedThisWeek: number;
+  currentDay: number | null;
+  totalDays: number;
 }
 
 export function RunSheetView({
   projectId,
   projectName,
   siteAddress,
+  projectStartDate,
   runSheet,
   days,
   pendingByDay,
@@ -93,9 +103,13 @@ export function RunSheetView({
   escalationsByDayId,
   weekStartDate,
   hasWeeklyLogisticsReview,
+  resolvedThisWeek,
+  currentDay,
+  totalDays,
 }: RunSheetViewProps) {
   const { role } = useRunSheetAuth();
   const [proposeModalOpen, setProposeModalOpen] = useState(false);
+  const [importCsvModalOpen, setImportCsvModalOpen] = useState(false);
   const [cutoffConfirmDay, setCutoffConfirmDay] = useState<CutoffRow | null>(null);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [midweekModalDismissed, setMidweekModalDismissed] = useState(false);
@@ -136,6 +150,18 @@ export function RunSheetView({
             onSnooze={role === "owner" ? () => setMidweekModalDismissed(true) : undefined}
           />
         )}
+        {importCsvModalOpen && (
+          <ImportRunSheetCsvModal
+            projectId={projectId}
+            projectStartDate={projectStartDate}
+            token={token}
+            onClose={() => setImportCsvModalOpen(false)}
+            onSuccess={(redirectUrl) => {
+              setImportCsvModalOpen(false);
+              window.location.href = redirectUrl;
+            }}
+          />
+        )}
         {inboxOpen && (
           <EscalationInboxModal
             projectId={projectId}
@@ -154,6 +180,19 @@ export function RunSheetView({
           weekStartDate={weekStartDate}
           hasWeeklyLogisticsReview={hasWeeklyLogisticsReview}
           onOpenProposeModal={() => setProposeModalOpen(true)}
+          onOpenImportCsvModal={role === "owner" ? () => setImportCsvModalOpen(true) : undefined}
+        />
+        <RunSheetScoreboard
+          currentDay={currentDay}
+          totalDays={totalDays}
+          hoursAgreed={runSheet?.hours_agreed ?? null}
+          hoursUsed={runSheet?.hours_used ?? null}
+          escalationCountLevel2Plus={escalationCountLevel2Plus}
+          resolvedThisWeek={resolvedThisWeek}
+          onOpenInbox={() => setInboxOpen(true)}
+          role={role}
+          runSheetId={runSheet?.id ?? null}
+          token={token}
         />
         <WeekActionsPanel
           cutoffs={cutoffs}
@@ -244,14 +283,6 @@ export function RunSheetView({
               className="text-sm font-medium text-zinc-700 underline hover:no-underline"
             >
               Print view
-            </Link>
-          )}
-          {role === "owner" && (
-            <Link
-              href={`/projects/${projectId}/delivery-risk${tokenQ}`}
-              className="text-sm font-medium text-zinc-700 underline hover:no-underline"
-            >
-              Delivery risk dashboard
             </Link>
           )}
         </div>

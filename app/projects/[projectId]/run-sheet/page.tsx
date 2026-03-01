@@ -18,7 +18,7 @@ export default async function RunSheetPage({ params, searchParams }: PageProps) 
 
   const { data: project } = await supabase
     .from("projects")
-    .select("id, name, site_address")
+    .select("id, name, site_address, start_date")
     .eq("id", projectId)
     .single();
 
@@ -26,7 +26,7 @@ export default async function RunSheetPage({ params, searchParams }: PageProps) 
 
   const { data: runSheets } = await supabase
     .from("run_sheets")
-    .select("id, version, status, supervisor_confirmed_at")
+    .select("id, version, status, supervisor_confirmed_at, hours_agreed, hours_used")
     .eq("project_id", projectId)
     .order("created_at", { ascending: false });
 
@@ -57,6 +57,23 @@ export default async function RunSheetPage({ params, searchParams }: PageProps) 
   }
   const weekStartDate = getWeekStartDate(new Date());
   const hasWeeklyLogisticsReview = await loadHasWeeklyLogisticsReview(supabase, projectId, weekStartDate);
+  const resolvedThisWeek = await loadResolvedThisWeek(supabase, projectId, weekStartDate);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const totalDays = days.length;
+  const currentDay =
+    totalDays > 0
+      ? (() => {
+          const match = days.find((d) => d.calendar_date === today);
+          if (match) return match.day_number;
+          const past = days.filter((d) => d.calendar_date && d.calendar_date <= today);
+          if (past.length > 0) {
+            const last = past[past.length - 1];
+            return last.day_number;
+          }
+          return days[0].day_number;
+        })()
+      : null;
 
   const token = tokenParam!;
   return (
@@ -73,7 +90,8 @@ export default async function RunSheetPage({ params, searchParams }: PageProps) 
         projectId={projectId}
         projectName={project.name}
         siteAddress={project.site_address}
-        runSheet={runSheet ? { id: runSheet.id, version: runSheet.version, status: runSheet.status, supervisor_confirmed_at: runSheet.supervisor_confirmed_at } : null}
+        projectStartDate={(project as { start_date?: string | null }).start_date ?? null}
+        runSheet={runSheet ? { id: runSheet.id, version: runSheet.version, status: runSheet.status, supervisor_confirmed_at: runSheet.supervisor_confirmed_at, hours_agreed: (runSheet as { hours_agreed?: number | null }).hours_agreed ?? null, hours_used: (runSheet as { hours_used?: number | null }).hours_used ?? null } : null}
         days={days}
         pendingByDay={pendingByDay}
         cutoffs={cutoffs}
@@ -83,6 +101,9 @@ export default async function RunSheetPage({ params, searchParams }: PageProps) 
         escalationsByDayId={escalationsByDayId}
         weekStartDate={weekStartDate}
         hasWeeklyLogisticsReview={hasWeeklyLogisticsReview}
+        resolvedThisWeek={resolvedThisWeek}
+        currentDay={currentDay}
+        totalDays={totalDays}
       />
     </RunSheetProvider>
   );
@@ -94,7 +115,7 @@ async function loadDays(
 ) {
   const { data } = await supabase
     .from("run_sheet_days")
-    .select("id, day_number, calendar_date, outcomes_text, logistics_text, cutoff_datetime, cutoff_category, cutoff_override_reason, cutoff_confirmed_at, cutoff_confirmed_by_label, cutoff_confirm_note, escalation_state")
+    .select("id, day_number, calendar_date, outcomes_text, logistics_text, cutoff_datetime, cutoff_category, cutoff_override_reason, cutoff_confirmed_at, cutoff_confirmed_by_label, cutoff_confirm_note, escalation_state, planned_labour_hours")
     .eq("run_sheet_id", runSheetId)
     .order("day_number", { ascending: true });
   return data ?? [];
@@ -128,7 +149,7 @@ async function loadCutoffs(
   in7.setDate(in7.getDate() + 7);
   const { data: days } = await supabase
     .from("run_sheet_days")
-    .select("id, day_number, calendar_date, cutoff_datetime, cutoff_category, cutoff_confirmed_at, cutoff_confirmed_by_label, cutoff_confirm_note, escalation_state")
+    .select("id, day_number, calendar_date, cutoff_datetime, cutoff_category, cutoff_confirmed_at, cutoff_confirmed_by_label, cutoff_confirm_note, escalation_state, planned_labour_hours")
     .eq("run_sheet_id", runSheetId)
     .not("cutoff_datetime", "is", null);
   const list: {
@@ -230,4 +251,18 @@ async function loadOpenEscalations(
     .order("level", { ascending: false })
     .order("created_at", { ascending: true });
   return (data ?? []) as EscalationRow[];
+}
+
+async function loadResolvedThisWeek(
+  supabase: ReturnType<typeof createServerSupabaseClient>,
+  projectId: string,
+  weekStartDate: string
+): Promise<number> {
+  const { data } = await supabase
+    .from("run_sheet_escalations")
+    .select("id")
+    .eq("project_id", projectId)
+    .eq("resolved", true)
+    .gte("resolved_at", weekStartDate);
+  return data?.length ?? 0;
 }

@@ -51,6 +51,7 @@ export function EODView({
   const [reason, setReason] = useState<"weather" | "variation" | "other">("weather");
   const [explanation, setExplanation] = useState("");
   const [recoveryPlan, setRecoveryPlan] = useState("");
+  const [actualNotes, setActualNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [acknowledgedThisSession, setAcknowledgedThisSession] = useState(false);
@@ -136,6 +137,7 @@ export function EODView({
           reason,
           explanation: explanation.trim() || undefined,
           recovery_plan: recoveryPlan.trim() || undefined,
+          actual_notes: actualNotes.trim() || undefined,
         }),
       });
       if (res.ok) setSubmitted(true);
@@ -178,7 +180,7 @@ export function EODView({
         <Card>
           <CardContent className="py-8">
             <p className="text-zinc-600">
-              No locked run sheet for this project, or no day matching this date.
+              No run sheet for this project, or no day matching this date.
             </p>
             <Link
               href={`/projects/${projectId}/run-sheet${tokenQ}`}
@@ -253,7 +255,7 @@ export function EODView({
         <>
           <Card className="mb-6">
             <CardHeader>
-              <h2 className="font-semibold">Today&apos;s plan</h2>
+              <h2 className="font-semibold">What we said we&apos;d do (from run sheet)</h2>
               {plan.calendar_date && (
                 <p className="text-sm text-zinc-500">
                   Day {plan.day_number ?? ""} · {plan.calendar_date}
@@ -262,14 +264,14 @@ export function EODView({
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <p className="text-sm font-medium text-zinc-500">Outcomes</p>
+                <p className="text-sm font-medium text-zinc-500">Planned outcomes</p>
                 <pre className="mt-1 whitespace-pre-wrap rounded bg-zinc-50 p-3 text-sm text-zinc-800">
                   {plan.outcomes_text ?? "—"}
                 </pre>
               </div>
               {plan.logistics_text && (
                 <div>
-                  <p className="text-sm font-medium text-zinc-500">Logistics</p>
+                  <p className="text-sm font-medium text-zinc-500">Planned logistics</p>
                   <pre className="mt-1 whitespace-pre-wrap rounded bg-zinc-50 p-3 text-sm text-zinc-800">
                     {plan.logistics_text}
                   </pre>
@@ -288,9 +290,21 @@ export function EODView({
 
           <Card>
             <CardHeader>
-              <h2 className="font-semibold">Reconciliation</h2>
+              <h2 className="font-semibold">What actually happened</h2>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-700">
+                  What we actually did
+                </label>
+                <textarea
+                  className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 text-sm"
+                  rows={4}
+                  value={actualNotes}
+                  onChange={(e) => setActualNotes(e.target.value)}
+                  placeholder="e.g. Stripped and poured 50m² pad. Steel fix booked for tomorrow."
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-700">
                   Status

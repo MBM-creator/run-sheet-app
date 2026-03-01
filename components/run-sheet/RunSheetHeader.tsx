@@ -34,6 +34,7 @@ interface RunSheetHeaderProps {
   weekStartDate?: string;
   hasWeeklyLogisticsReview?: boolean;
   onOpenProposeModal?: () => void;
+  onOpenImportCsvModal?: () => void;
 }
 
 export function RunSheetHeader({
@@ -45,6 +46,7 @@ export function RunSheetHeader({
   weekStartDate,
   hasWeeklyLogisticsReview = true,
   onOpenProposeModal,
+  onOpenImportCsvModal,
 }: RunSheetHeaderProps) {
   const { role, token } = useRunSheetAuth();
   const [loading, setLoading] = useState<string | null>(null);
@@ -145,6 +147,11 @@ export function RunSheetHeader({
           )}
         </div>
         <div className="flex flex-wrap gap-2">
+          {isOwner && onOpenImportCsvModal && (
+            <Button variant="secondary" onClick={onOpenImportCsvModal}>
+              Import from Excel (CSV)
+            </Button>
+          )}
           {isOwner && !runSheet && (
             <Button
               onClick={doCreate}

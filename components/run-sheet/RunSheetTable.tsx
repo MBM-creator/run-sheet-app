@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useRunSheetAuth } from "@/contexts/RunSheetContext";
 import { OPS_FLAG_LABELS } from "@/lib/ui/ops-flags-labels";
+import { formatDateTimeLocal } from "@/lib/datetime/format";
 import type { RunSheetStatus } from "@/lib/types";
 
 interface DayRow {
@@ -18,6 +19,7 @@ interface DayRow {
   cutoff_confirmed_at?: string | null;
   cutoff_confirmed_by_label?: string | null;
   cutoff_confirm_note?: string | null;
+  planned_labour_hours?: number | null;
 }
 
 interface EscalationForRow {
@@ -99,6 +101,11 @@ export function RunSheetTable({
                   <td className="px-4 py-2 font-medium">{day.day_number}</td>
                   <td className="px-4 py-2 text-zinc-600">
                     {day.calendar_date ?? "—"}
+                    {day.planned_labour_hours != null && (
+                      <span className="ml-2 text-xs text-zinc-500">
+                        Planned: {day.planned_labour_hours}h
+                      </span>
+                    )}
                   </td>
                   <td className="max-w-xs px-4 py-2">
                     <button
@@ -127,19 +134,13 @@ export function RunSheetTable({
                           <div className="mt-3 border-t border-zinc-200 pt-3">
                             <p className="font-medium text-zinc-500">Cut-off</p>
                             <p className="mt-1 text-sm">
-                              {new Date(day.cutoff_datetime).toLocaleString(undefined, {
-                                dateStyle: "medium",
-                                timeStyle: "short",
-                              })}
+                              {formatDateTimeLocal(day.cutoff_datetime)}
                               {day.cutoff_category && ` · ${day.cutoff_category}`}
                             </p>
                             {day.cutoff_confirmed_at ? (
                               <p className="mt-1 text-sm text-green-700">
                                 {OPS_FLAG_LABELS.confirmedText} by {day.cutoff_confirmed_by_label ?? "—"} at{" "}
-                                {new Date(day.cutoff_confirmed_at).toLocaleString(undefined, {
-                                  dateStyle: "short",
-                                  timeStyle: "short",
-                                })}
+                                {formatDateTimeLocal(day.cutoff_confirmed_at)}
                                 {day.cutoff_confirm_note && ` · ${day.cutoff_confirm_note}`}
                               </p>
                             ) : new Date(day.cutoff_datetime) < new Date() ? (

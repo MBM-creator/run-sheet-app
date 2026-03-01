@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { validateRunSheetToken } from "@/lib/auth/validate-token-server";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
+import { formatDateTimeLocal } from "@/lib/datetime/format";
 
 interface PageProps {
   params: Promise<{ projectId: string; dayNumber: string }>;
@@ -38,7 +39,7 @@ export default async function DayPage({ params, searchParams }: PageProps) {
 
   const { data: day } = await supabase
     .from("run_sheet_days")
-    .select("id, day_number, calendar_date, outcomes_text, logistics_text, cutoff_datetime, cutoff_category")
+    .select("id, day_number, calendar_date, outcomes_text, logistics_text, cutoff_datetime, cutoff_category, planned_labour_hours")
     .eq("run_sheet_id", runSheetId)
     .eq("day_number", dayNum)
     .single();
@@ -72,7 +73,7 @@ export default async function DayPage({ params, searchParams }: PageProps) {
               <p className="text-sm text-zinc-500">
                 {day.calendar_date ?? "No date set"}
                 {day.cutoff_datetime && (
-                  <> · Cut-off: {new Date(day.cutoff_datetime).toLocaleString()}</>
+                  <> · Cut-off: {formatDateTimeLocal(day.cutoff_datetime)}</>
                 )}
                 {day.cutoff_category && (
                   <> · {day.cutoff_category}</>

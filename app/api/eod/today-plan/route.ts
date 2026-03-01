@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServerSupabaseClient();
 
+  // Prefer locked run sheet; fall back to draft so crews can still see "what we said we'd do" and compare
   const { data: locked } = await supabase
     .from("run_sheets")
     .select("id")
@@ -30,11 +31,25 @@ export async function GET(request: NextRequest) {
     .limit(1)
     .single();
 
-  if (!locked) {
+  let runSheetId: string | null = locked?.id ?? null;
+  if (!runSheetId) {
+    const { data: draft } = await supabase
+      .from("run_sheets")
+      .select("id")
+      .eq("project_id", projectId)
+      .eq("status", "draft")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    runSheetId = draft?.id ?? null;
+  }
+
+  if (!runSheetId) {
     return NextResponse.json({
       run_sheet_id: null,
       run_sheet_day_id: null,
       outcomes_text: null,
+      logistics_text: null,
       link: null,
     });
   }
@@ -42,16 +57,17 @@ export async function GET(request: NextRequest) {
   const { data: day } = await supabase
     .from("run_sheet_days")
     .select("id, outcomes_text, logistics_text, day_number, calendar_date")
-    .eq("run_sheet_id", locked.id)
+    .eq("run_sheet_id", runSheetId)
     .eq("calendar_date", dateStr)
     .limit(1)
     .single();
 
   if (!day) {
     return NextResponse.json({
-      run_sheet_id: locked.id,
+      run_sheet_id: runSheetId,
       run_sheet_day_id: null,
       outcomes_text: null,
+      logistics_text: null,
       link: null,
     });
   }
@@ -61,7 +77,7 @@ export async function GET(request: NextRequest) {
   const link = `${baseUrl}/projects/${projectId}/run-sheet`;
 
   return NextResponse.json({
-    run_sheet_id: locked.id,
+    run_sheet_id: runSheetId,
     run_sheet_day_id: day.id,
     outcomes_text: day.outcomes_text,
     logistics_text: day.logistics_text,

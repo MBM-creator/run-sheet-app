@@ -33,11 +33,11 @@ export default async function PrintPage({ params, searchParams }: PageProps) {
     runSheets?.find((rs) => rs.status === "approved_pending_lock") ??
     runSheets?.find((rs) => rs.status === "locked");
 
-  let days: { day_number: number; calendar_date: string | null; outcomes_text: string | null; logistics_text: string | null }[] = [];
+  let days: { day_number: number; calendar_date: string | null; outcomes_text: string | null; logistics_text: string | null; planned_labour_hours?: number | null }[] = [];
   if (runSheet) {
     const { data } = await supabase
       .from("run_sheet_days")
-      .select("day_number, calendar_date, outcomes_text, logistics_text")
+      .select("day_number, calendar_date, outcomes_text, logistics_text, planned_labour_hours")
       .eq("run_sheet_id", runSheet.id)
       .order("day_number", { ascending: true });
     days = data ?? [];
